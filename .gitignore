@@ -1,0 +1,5 @@
+ // Start of Selection
+*.pyc
+staticfield+
+.env
+GEMINI_API_KEY.env
