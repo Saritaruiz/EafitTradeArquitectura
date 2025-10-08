@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subject|default:"Notificación de EafitTrade" }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .message {
+            font-size: 16px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .details {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .detail-item {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .detail-value {
+            color: #6c757d;
+        }
+        .rating {
+            color: #ffc107;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px 5px;
+            text-align: center;
+        }
+        .action-button:hover {
+            background-color: #0056b3;
+        }
+        .whatsapp-button {
+            background-color: #25d366;
+        }
+        .whatsapp-button:hover {
+            background-color: #128c7e;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: #495057;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .action-button {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🛒 EafitTrade</div>
+            <div class="subtitle">Tu marketplace universitario</div>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                ¡Hola {{ user.first_name|default:user.username }}!
+            </div>
+            
+            <div class="message">
+                {{ message }}
+            </div>
+            
+            {% if context.notification_type == 'comment' %}
+                <div class="details">
+                    <h3 style="margin-top: 0; color: #007bff;">💬 Detalles del Comentario</h3>
+                    <div class="detail-item">
+                        <span class="detail-label">Producto:</span>
+                        <span class="detail-value">{{ context.product_name }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Comentario de:</span>
+                        <span class="detail-value">{{ context.commenter }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Calificación:</span>
+                        <span class="detail-value rating">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= context.comment_rating %}⭐{% else %}☆{% endif %}
+                            {% endfor %}
+                            ({{ context.comment_rating }}/5)
+                        </span>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <strong>Comentario:</strong>
+                        <p style="font-style: italic; color: #6c757d; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                            "{{ context.comment_text }}"
+                        </p>
+                    </div>
+                </div>
+            {% elif context.notification_type == 'favorite' %}
+                <div class="details">
+                    <h3 style="margin-top: 0; color: #007bff;">⭐ Nuevo Favorito</h3>
+                    <div class="detail-item">
+                        <span class="detail-label">Producto:</span>
+                        <span class="detail-value">{{ context.product_name }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Marcado por:</span>
+                        <span class="detail-value">{{ context.user }}</span>
+                    </div>
+                </div>
+            {% elif context.notification_type == 'interest' %}
+                <div class="details">
+                    <h3 style="margin-top: 0; color: #007bff;">👀 Interés en Producto</h3>
+                    <div class="detail-item">
+                        <span class="detail-label">Producto:</span>
+                        <span class="detail-value">{{ context.product_name }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Usuario interesado:</span>
+                        <span class="detail-value">{{ context.interested_user }}</span>
+                    </div>
+                </div>
+            {% elif context.notification_type == 'stock' %}
+                <div class="details">
+                    <h3 style="margin-top: 0; color: #ffc107;">⚠️ Alerta de Stock</h3>
+                    <div class="detail-item">
+                        <span class="detail-label">Producto:</span>
+                        <span class="detail-value">{{ context.product_name }}</span>
+                    </div>
+                    <p style="color: #856404; background-color: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeaa7;">
+                        <strong>Recomendación:</strong> Considera actualizar el stock o marcar el producto como no disponible.
+                    </p>
+                </div>
+            {% endif %}
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://eafittrade.com" class="action-button">
+                    Ver en EafitTrade
+                </a>
+                
+                {% if context.whatsapp_url %}
+                    <a href="{{ context.whatsapp_url }}" class="action-button whatsapp-button">
+                        📱 Responder por WhatsApp
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>
+                <strong>{{ site_name }}</strong><br>
+                Universidad EAFIT - Marketplace Estudiantil<br>
+                <small>Este email fue enviado automáticamente. Si no deseas recibir estas notificaciones, 
+                puedes ajustar tus preferencias en tu perfil.</small>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

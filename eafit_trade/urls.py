@@ -32,6 +32,9 @@ urlpatterns = [
     path('registrar-click-whatsapp/', products_views.register_whatsapp_click, name='register_whatsapp_click'),
     path('chat-search/', products_views.chat_search, name='chat_search'),
     
+    # URL para demostración de Inversión de Dependencias
+    path('demo/notifications/', products_views.notification_demo, name='notification_demo'),
+    
     # URLs para la autenticación
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
