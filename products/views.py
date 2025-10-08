@@ -18,6 +18,9 @@ import logging
 # Importar pyngrok para poder iniciar ngrok desde Django
 from pyngrok import ngrok, conf
 
+# Importar el sistema de notificaciones con Inversión de Dependencias
+from .notifications.manager import NotificationService
+
 # Configurar el logger para ngrok
 logger = logging.getLogger(__name__)
 
@@ -172,6 +175,14 @@ def delete_product(request, product_id):
 @login_required
 @require_POST
 def add_comment(request, product_id):
+    """
+    Agrega un nuevo comentario a un producto e implementa Inversión de Dependencias
+    para el sistema de notificaciones.
+    
+    Esta función demuestra cómo el código cliente (esta vista) depende de la
+    abstracción (NotificationService) en lugar de implementaciones concretas
+    de notificadores específicos.
+    """
     product = get_object_or_404(Product, id=product_id)
     form = CommentForm(request.POST)
     
@@ -180,6 +191,28 @@ def add_comment(request, product_id):
         comment.product = product
         comment.user = request.user
         comment.save()
+        
+        # Aplicación del principio de Inversión de Dependencias
+        # El código no depende de EmailNotifier o WhatsAppNotifier específicos,
+        # sino de la abstracción NotificationService
+        try:
+            notification_service = NotificationService()
+            
+            # Solo notificar si el comentador no es el vendedor
+            if comment.user != product.seller:
+                # El servicio internamente usa el patrón DIP para decidir
+                # qué notificadores usar según la configuración
+                results = notification_service.notify_new_comment(comment, request)
+                
+                # Log de resultados para debugging
+                successful_channels = [channel for channel, success in results.items() if success]
+                if successful_channels:
+                    logger.info(f"Notificación de comentario enviada por: {', '.join(successful_channels)}")
+                
+        except Exception as e:
+            # Error en notificaciones no debe afectar la funcionalidad principal
+            logger.error(f"Error en sistema de notificaciones: {str(e)}")
+        
         messages.success(request, '¡Comentario agregado exitosamente!')
     else:
         messages.error(request, 'Error al agregar el comentario. Por favor, inténtalo de nuevo.')
@@ -204,6 +237,13 @@ def delete_comment(request, comment_id):
 @login_required
 @require_POST
 def toggle_favorite(request, product_id):
+    """
+    Alterna el estado de favorito de un producto e implementa notificaciones
+    usando el principio de Inversión de Dependencias.
+    
+    Demuestra cómo diferentes tipos de notificaciones (in-app, WhatsApp)
+    pueden ser manejadas por el mismo código sin acoplar a implementaciones específicas.
+    """
     product = get_object_or_404(Product, id=product_id)
     favorite, created = Favorite.objects.get_or_create(
         user=request.user,
@@ -213,6 +253,24 @@ def toggle_favorite(request, product_id):
     if not created:
         favorite.delete()
         return JsonResponse({'status': 'removed'})
+    
+    # Aplicar Inversión de Dependencias para notificaciones
+    try:
+        notification_service = NotificationService()
+        
+        # Solo notificar si el usuario no es el vendedor
+        if request.user != product.seller:
+            # El servicio decide internamente qué canales usar
+            # Preferimos notificaciones inmediatas (in-app, WhatsApp)
+            results = notification_service.notify_new_favorite(favorite, request)
+            
+            # Opcional: incluir información de canales exitosos en la respuesta
+            successful_channels = [channel for channel, success in results.items() if success]
+            logger.info(f"Notificación de favorito enviada por: {', '.join(successful_channels)}")
+            
+    except Exception as e:
+        # Error en notificaciones no debe afectar la funcionalidad principal
+        logger.error(f"Error en notificación de favorito: {str(e)}")
     
     return JsonResponse({'status': 'added'})
 
@@ -267,18 +325,115 @@ def product_detail(request, product_id):
     })
 
 def register_whatsapp_click(request):
+    """
+    Registra clicks en WhatsApp y envía notificación de interés.
+    
+    Esta función demuestra el patrón DIP permitiendo notificaciones
+    flexibles según el contexto (preferencia por WhatsApp para interés directo).
+    """
     if request.method == 'POST':
         profile_id = request.POST.get('profile_id')
+        product_id = request.POST.get('product_id')  # Nuevo parámetro
+        
         try:
             profile = SellerProfile.objects.get(id=profile_id)
             ProfileClick.objects.create(
                 profile=profile,
                 user=request.user if request.user.is_authenticated else None
             )
+            
+            # Si hay información del producto y usuario autenticado, notificar interés
+            if product_id and request.user.is_authenticated:
+                try:
+                    product = Product.objects.get(id=product_id)
+                    
+                    # Demostración de flexibilidad del patrón DIP:
+                    # Crear servicio con preferencia específica por WhatsApp
+                    from .notifications.manager import NotificationManager, WhatsAppNotifier, LogNotifier
+                    
+                    # Inyección de dependencia específica para este caso
+                    whatsapp_manager = NotificationManager([
+                        WhatsAppNotifier(),  # Primera prioridad
+                        LogNotifier()        # Fallback
+                    ])
+                    
+                    notification_service = NotificationService(whatsapp_manager)
+                    notification_service.notify_product_interest(product, request.user, request)
+                    
+                except Product.DoesNotExist:
+                    pass  # Producto no encontrado, continuar sin notificar
+                except Exception as e:
+                    logger.error(f"Error notificando interés en producto: {str(e)}")
+            
             return JsonResponse({'success': True})
+            
         except SellerProfile.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Perfil no encontrado'}, status=404)
     return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+
+
+@login_required
+def notification_demo(request):
+    """
+    Vista de demostración que muestra la flexibilidad del patrón de Inversión de Dependencias.
+    
+    Esta vista permite a los usuarios probar diferentes canales de notificación
+    y ver cómo el mismo código puede usar diferentes implementaciones sin cambios.
+    """
+    if request.method == 'POST':
+        channel = request.POST.get('channel', 'default')
+        message = request.POST.get('message', 'Mensaje de prueba del sistema de notificaciones')
+        
+        try:
+            from .notifications.manager import (
+                NotificationManager, NotificationService,
+                EmailNotifier, WhatsAppNotifier, LogNotifier, InAppNotifier
+            )
+            
+            # Demostración de diferentes configuraciones usando DIP
+            if channel == 'email':
+                # Configuración específica para email
+                email_manager = NotificationManager([EmailNotifier()])
+                service = NotificationService(email_manager)
+                results = service._get_manager().send_notification(request.user, message)
+                
+            elif channel == 'whatsapp':
+                # Configuración específica para WhatsApp
+                whatsapp_manager = NotificationManager([WhatsAppNotifier(), LogNotifier()])
+                service = NotificationService(whatsapp_manager)
+                results = service._get_manager().send_notification(request.user, message)
+                
+            elif channel == 'multi':
+                # Configuración multi-canal con fallbacks
+                multi_manager = NotificationManager([
+                    InAppNotifier(request),    # Inmediato
+                    WhatsAppNotifier(),        # Rápido
+                    EmailNotifier(),           # Confiable
+                    LogNotifier()              # Fallback
+                ])
+                service = NotificationService(multi_manager)
+                results = service._get_manager().send_notification(request.user, message)
+                
+            else:
+                # Configuración por defecto (demuestra factory pattern)
+                service = NotificationService()
+                results = service._get_manager(request).send_notification(request.user, message)
+            
+            # Mostrar resultados al usuario
+            successful = [ch for ch, success in results.items() if success]
+            failed = [ch for ch, success in results.items() if not success]
+            
+            if successful:
+                messages.success(request, f"✅ Notificación enviada por: {', '.join(successful)}")
+            if failed:
+                messages.warning(request, f"❌ Falló en canales: {', '.join(failed)}")
+                
+        except Exception as e:
+            messages.error(request, f"Error en demostración: {str(e)}")
+    
+    return render(request, 'products/notification_demo.html', {
+        'user': request.user
+    })
 
 @require_POST
 def chat_search(request):
