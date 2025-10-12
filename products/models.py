@@ -2,63 +2,57 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
-from django.core.exceptions import ValidationError
 import pytz
+
+# Importar modelos normalizados
+from .modelos_normalizados.category import Category
+from .modelos_normalizados.condition import Condition
+from .modelos_normalizados.foodType import FoodType
 
 # Configuración para la zona horaria de Colombia (UTC-5)
 COLOMBIA_TIMEZONE = pytz.timezone('America/Bogota')
 
-class Product(models.Model):
-    CATEGORY_CHOICES = [
-        ('Comida', 'Comida'),
-        ('Ropa', 'Ropa'),
-        ('Tecnología', 'Tecnología'),
-        ('Libros', 'Libros'),
-        ('Otros', 'Otros'),
-    ]
-    
-    CONDITION_CHOICES = [
-        ('Nuevo', 'Nuevo'),
-        ('Usado', 'Usado'),
-        ('Buen estado', 'Buen estado'),
-    ]
-    
-    FOOD_TYPE_CHOICES = [
-        ('Panadería', 'Panadería'),
-        ('Galletas', 'Galletas'),
-        ('Repostería', 'Repostería'),
-        ('Frutas', 'Frutas'),
-        ('Frituras', 'Frituras'),
-        ('Dulces', 'Dulces'),
-        ('Helados', 'Helados'),
-        ('Snacks', 'Snacks'),
-        ('Comida rápida', 'Comida rápida'),
-        ('Otros', 'Otros'),
-    ]
 
+class Product(models.Model):
     name = models.CharField(
         max_length=255,
         verbose_name='Nombre',
         help_text='Nombre del producto'
     )
-    category = models.CharField(
-        max_length=50,
-        choices=CATEGORY_CHOICES,
-        verbose_name='Categoría',
+
+    # Relaciones normalizadas en lugar de CharFields con choices
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
         null=True,
-        blank=True
-    )
-    food_type = models.CharField(
-        max_length=50,
-        choices=FOOD_TYPE_CHOICES,
-        verbose_name='Tipo de Comida',
         blank=True,
-        null=True
+        related_name='products',
+        verbose_name='Categoría'
     )
+
+    food_type = models.ForeignKey(
+        FoodType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='food_products',
+        verbose_name='Tipo de comida'
+    )
+
+    condition = models.ForeignKey(
+        Condition,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='condition_products',
+        verbose_name='Condición'
+    )
+
     description = models.TextField(
         verbose_name='Descripción',
         help_text='Describe tu producto detalladamente'
     )
+
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -66,46 +60,46 @@ class Product(models.Model):
         verbose_name='Precio',
         help_text='Precio en pesos colombianos'
     )
+
     published_at = models.DateTimeField(
         default=timezone.now,
         verbose_name='Fecha de publicación'
     )
-    condition = models.CharField(
-        max_length=50,
-        choices=CONDITION_CHOICES,
-        verbose_name='Estado',
-        blank=True,
-        null=True
-    )
+
     image = models.ImageField(
         upload_to='products/',
         verbose_name='Imagen',
         help_text='Imagen del producto'
     )
+
     seller = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name='Vendedor',
         related_name='products'
     )
+
     available = models.BooleanField(
         default=True,
         verbose_name='Disponible'
     )
 
     def clean(self):
-        # Actualizar la lógica de validación
-        if self.category == 'Comida':
-            self.condition = None  # No aplica estado para comida
+        """Validación contextual: asegura coherencia entre categoría y otros campos."""
+        if self.category and self.category.name == 'Comida':
+            self.condition = None  # No aplica condición para productos de comida
         else:
             self.food_type = None  # No aplica tipo de comida para otras categorías
 
     def save(self, *args, **kwargs):
+        """Valida antes de guardar el modelo."""
         self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} - {self.get_category_display()}"
+        """Representación legible del producto."""
+        category_name = self.category.name if self.category else "Sin categoría"
+        return f"{self.name} - {category_name}"
 
     class Meta:
         verbose_name = 'Producto'
@@ -113,12 +107,12 @@ class Product(models.Model):
         ordering = ['-published_at']
         indexes = [
             models.Index(fields=['name']),
-            models.Index(fields=['category']),
             models.Index(fields=['available']),
         ]
 
     @property
     def average_rating(self):
+        """Calcula el promedio de calificaciones del producto."""
         comments = self.comments.all()
         if not comments:
             return 0
@@ -126,16 +120,18 @@ class Product(models.Model):
 
     @property
     def total_ratings(self):
+        """Cuenta el número total de calificaciones."""
         return self.comments.count()
+
 
 class Comment(models.Model):
     product = models.ForeignKey(
-        Product, 
+        Product,
         on_delete=models.CASCADE,
         related_name='comments'
     )
     user = models.ForeignKey(
-        User, 
+        User,
         on_delete=models.CASCADE,
         related_name='comments'
     )
@@ -162,22 +158,21 @@ class Comment(models.Model):
         return f'Comentario de {self.user.username} en {self.product.name}'
 
     def save(self, *args, **kwargs):
-        # Si es un nuevo comentario, asignar la fecha actual con la zona horaria de Colombia
+        """Guarda la fecha de creación con zona horaria de Colombia."""
         if not self.pk:
-            # Obtener la fecha actual en UTC
             now_utc = timezone.now()
-            # Convertir a la zona horaria de Colombia
             self.created_at = now_utc.astimezone(COLOMBIA_TIMEZONE)
         super().save(*args, **kwargs)
 
+
 class Favorite(models.Model):
     user = models.ForeignKey(
-        User, 
+        User,
         on_delete=models.CASCADE,
         related_name='favorites'
     )
     product = models.ForeignKey(
-        Product, 
+        Product,
         on_delete=models.CASCADE,
         related_name='favorited_by'
     )
@@ -194,6 +189,7 @@ class Favorite(models.Model):
 
     def __str__(self):
         return f'{self.user.username} ♥ {self.product.name}'
+
 
 class ChatQuery(models.Model):
     query = models.TextField(

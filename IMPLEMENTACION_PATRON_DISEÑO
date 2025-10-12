@@ -3,7 +3,7 @@
 
 ---
 
-## 🧩 Patrón 2: Template Method Pattern  
+# 🧩 Patrón 1: Template Method Pattern  
 
 ### 📍 Contexto  
 
@@ -99,3 +99,78 @@ Cumplimiento de SOLID:
 S: Cada vista tiene una responsabilidad específica.
 O: Abierto a extensión, cerrado a modificación.
 L: Subclases reemplazan a la base sin alterar el flujo.
+
+
+
+# 🧩 Patrón 2: Normalización de modelos en la aplicación products
+
+1️⃣ Objetivo
+
+Optimizar la estructura del modelo Product mediante la normalización de las entidades dependientes (Category, Condition y FoodType), aplicando buenas prácticas de modelado relacional para mejorar la consistencia, escalabilidad y mantenibilidad de la base de datos en el sistema EafitTrade
+
+
+2️⃣ Contexto del cambio
+
+Inicialmente, el modelo Product utilizaba listas de opciones estáticas (choices) para las categorías, condiciones y tipos de comida.
+Si bien esto era funcional, presentaba limitaciones:
+
+Dificultaba la modificación dinámica de categorías o condiciones sin alterar el código.
+
+Impedía la administración flexible desde el panel de Django Admin.
+
+Limitaba las relaciones y consultas entre productos y sus tipos asociados.
+
+Para resolverlo, se implementó una normalización de tablas:
+ahora, cada una de estas entidades (Category, Condition, FoodType) se representa como un modelo independiente, relacionado con Product mediante una clave foránea (ForeignKey).
+
+
+3️⃣ Implementación técnica
+📂 Nueva estructura de modelos
+
+Los modelos normalizados se ubican en:
+
+products/
+ ├── modelos_normalizados/
+ │   ├── category.py
+ │   ├── condition.py
+ │   └── food_type.py
+ └── models.py
+
+
+🧩 Cambios aplicados en models.py
+
+Se sustituyeron los campos de texto con choices por relaciones ForeignKey a las nuevas tablas normalizadas:
+
+4️⃣ Ajustes de migraciones y base de datos
+
+Debido a los cambios en la estructura, fue necesario reinicializar las migraciones y la base de datos para evitar conflictos con las antiguas columnas CharField.
+
+5️⃣ Carga de datos iniciales
+
+Para poblar las tablas normalizadas con los valores predefinidos, se usó el shell de Django:
+
+from products.modelos_normalizados.food_type import FoodType
+
+for tipo in [
+    'Panadería', 'Galletas', 'Repostería', 'Frutas', 'Frituras',
+    'Dulces', 'Helados', 'Snacks', 'Comida rápida', 'Otros'
+]:
+    FoodType.objects.get_or_create(name=tipo)
+
+
+6️⃣ Resultados y beneficios
+
+✅ Consistencia de datos:
+Los valores repetidos o escritos incorrectamente ya no son posibles, pues provienen de registros controlados.
+
+✅ Facilidad de administración:
+Los administradores pueden agregar, editar o eliminar categorías desde el panel de Django Admin, sin modificar el código fuente.
+
+✅ Escalabilidad:
+Permite integrar nuevas entidades (por ejemplo, “Subcategorías” o “Tipos de condición”) mediante relaciones adicionales.
+
+
+7️⃣ Conclusión
+
+La normalización aplicada al modelo Product optimiza la arquitectura de datos del sistema, siguiendo principios de 3ª forma normal en bases relacionales.
+Esto mejora la integridad referencial, reduce redundancia y permite una mayor flexibilidad de administración y mantenimiento en la aplicación.
