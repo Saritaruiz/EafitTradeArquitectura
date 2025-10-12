@@ -1,0 +1,101 @@
+# 📘 Documentación de Cambios — Actividad 5  
+**Aplicación de Patrones de Diseño en Django (EafitTrade)**  
+
+---
+
+## 🧩 Patrón 2: Template Method Pattern  
+
+### 📍 Contexto  
+
+En el proyecto **EafitTrade**, las vistas encargadas del CRUD de productos (`add_product`, `edit_product` y `delete_product`) contenían **lógica duplicada**:  
+- Validación de formularios  
+- Mensajes al usuario  
+- Redirecciones y manejo de errores  
+- Verificación de permisos del vendedor  
+
+Esto dificultaba la **mantenibilidad** del código y violaba el principio DRY (*Don’t Repeat Yourself*).  
+
+---
+
+### 🏗️ Decisión de Diseño  
+
+Se aplicó el **Patrón Template Method**, un patrón de comportamiento que permite definir **la estructura general de un algoritmo** en una clase base y dejar que las **subclases personalicen partes específicas** del mismo.  
+
+**Objetivo:**  
+- Centralizar la lógica común del CRUD de productos.  
+- Permitir que cada acción (crear, editar, eliminar) personalice solo los pasos necesarios.  
+- Facilitar la extensión o modificación del flujo sin romper la estructura principal.  
+
+---
+
+### ⚙️ Cambios Realizados en el Código  
+
+#### 📁 Nueva Estructura
+
+products/
+├── views/
+│ ├── init.py
+│ ├── base_product_view.py # Clase base con Template Method
+│ ├── add_product_view.py # Subclase concreta (Create)
+│ ├── edit_product_view.py # Subclase concreta (Update)
+│ ├── delete_product_view.py # Subclase concreta (Delete)
+│ └── ...
+└── ...
+
+
+---
+
+### 🧱 1. Clase Base `BaseProductView`
+📄 **Ubicación:** `products/views/base_product_view.py`
+
+```python
+from abc import ABC, abstractmethod
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from products.models import Product
+
+class BaseProductView(ABC):
+    template_name = None
+    success_message = None
+    error_message = None
+
+    def dispatch(self, request, *args, **kwargs):
+        """Método plantilla: define el flujo general"""
+        try:
+            if request.method == 'POST':
+                return self.handle_post(request, *args, **kwargs)
+            return self.handle_get(request, *args, **kwargs)
+        except Exception as e:
+            messages.error(request, f"Ocurrió un error: {str(e)}")
+            return redirect('home')
+
+    @abstractmethod
+    def handle_get(self, request, *args, **kwargs):
+        """Paso a personalizar: manejar solicitudes GET"""
+        pass
+
+    @abstractmethod
+    def handle_post(self, request, *args, **kwargs):
+        """Paso a personalizar: manejar solicitudes POST"""
+        pass
+
+### 🧠 Motivo:
+Esta clase define el esqueleto del flujo CRUD: manejo de errores, verificación del método HTTP, y estructura general.
+Cada subclase concreta solo implementa la parte que cambia (handle_get y handle_post).
+
+### Clases implicadas:
+Todas estas funcionalidades se guardaron en la carpeta de views_Patron_Diseño
+-Subclase AddProductView
+-Subclase EditProductView
+-Subclase DeleteProductView
+
+###🧩 Ventajas Obtenidas
+
+Reutilización: La clase base gestiona errores, permisos y estructura.
+Extensibilidad: Se pueden agregar nuevos tipos de acciones sin alterar las existentes.
+Consistencia: Todas las operaciones CRUD siguen el mismo flujo.
+Cumplimiento de SOLID:
+
+S: Cada vista tiene una responsabilidad específica.
+O: Abierto a extensión, cerrado a modificación.
+L: Subclases reemplazan a la base sin alterar el flujo.
