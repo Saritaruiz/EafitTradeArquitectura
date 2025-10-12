@@ -904,7 +904,7 @@
                                     <div id="foodTypeFilter" class="mt-2" {% if selected_category != 'Comida' %}style="display: none;"{% endif %}>
                                         <select name="food_type" class="form-select">
                                             <option value="">Todos los tipos</option>
-                                            {% for code, name in food_types %}
+                                            {% for code, name in foodTypes %}
                                             <option value="{{ code }}" {% if selected_food_type == code %}selected{% endif %}>
                                                 {{ name }}
                                             </option>

@@ -14,6 +14,10 @@ from django.contrib.auth.models import User
 from .gemini_processor import GeminiProcessor
 import json
 import logging
+from .modelos_normalizados.category import Category
+from .modelos_normalizados.condition import Condition
+from .modelos_normalizados.foodType import FoodType
+
 
 # Importar pyngrok para poder iniciar ngrok desde Django
 from pyngrok import ngrok, conf
@@ -110,8 +114,9 @@ def home(request):
         'selected_food_type': food_type,
         'min_price': min_price,
         'max_price': max_price,
-        'categories': Product.CATEGORY_CHOICES,
-        'food_types': Product.FOOD_TYPE_CHOICES,
+        'categories': Category.objects.all(),      # ✅
+        'conditions': Condition.objects.all(),     # ✅
+        'food_types': FoodType.objects.all(),      # ✅
         'MEDIA_URL': settings.MEDIA_URL,
     }
     return render(request, 'products/home.html', context)

@@ -1,9 +1,31 @@
 from django import forms
 from .models import Product, Comment
+from .modelos_normalizados.category import Category
+from .modelos_normalizados.condition import Condition
+from .modelos_normalizados.foodType import FoodType
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
 class ProductForm(forms.ModelForm):
+    category = forms.ModelChoiceField(
+        queryset=Category.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_category'}),
+        required=True,
+        label="Categoría"
+    )
+    condition = forms.ModelChoiceField(
+        queryset=Condition.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_condition'}),
+        required=False,
+        label="Condición"
+    )
+    food_type = forms.ModelChoiceField(
+        queryset=FoodType.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_food_type'}),
+        required=False,
+        label="Tipo de comida"
+    )
+
     class Meta:
         model = Product
         fields = [
@@ -12,15 +34,12 @@ class ProductForm(forms.ModelForm):
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'category': forms.Select(attrs={'class': 'form-control', 'id': 'id_category'}),
-            'food_type': forms.Select(attrs={'class': 'form-control', 'id': 'id_food_type'}),
             'description': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 4,
                 'placeholder': 'Describe tu producto detalladamente'
             }),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
-            'condition': forms.Select(attrs={'class': 'form-control', 'id': 'id_condition'}),
             'image': forms.FileInput(attrs={'class': 'form-control'}),
             'available': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
@@ -30,27 +49,21 @@ class ProductForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Asegura que los querysets estén actualizados
+        self.fields['category'].queryset = Category.objects.all()
+        self.fields['condition'].queryset = Condition.objects.all()
+        self.fields['food_type'].queryset = FoodType.objects.all()
         self.fields['food_type'].required = False
         self.fields['condition'].required = False
-        
-        # Configuración específica para el campo available
+
         self.fields['available'].label = 'Producto disponible'
         self.fields['available'].help_text = 'Desmarque esta opción si el producto no está disponible temporalmente'
-        
-        # Si es una instancia nueva (creación), excluimos el campo available
-        if not kwargs.get('instance'):
-            del self.fields['available']
-        
-        # Mejora de las etiquetas y mensajes de ayuda
-        for field in self.fields:
-            if self.fields[field].required:
-                self.fields[field].label = f"{self.fields[field].label} *"
 
     def clean(self):
         cleaned_data = super().clean()
         category = cleaned_data.get('category')
-        
-        if category == 'Comida':
+        comida_category = Category.objects.filter(name__iexact="Comida").first()
+        if category and comida_category and category.pk == comida_category.pk:
             food_type = cleaned_data.get('food_type')
             if not food_type:
                 self.add_error('food_type', 'Debe seleccionar un tipo de comida')
@@ -60,7 +73,6 @@ class ProductForm(forms.ModelForm):
             if not condition:
                 self.add_error('condition', 'Debe seleccionar un estado para el producto')
             cleaned_data['food_type'] = None
-        
         return cleaned_data
 
 class CommentForm(forms.ModelForm):
@@ -110,4 +122,4 @@ class CustomUserCreationForm(UserCreationForm):
                 <li>Tu contraseña no puede ser completamente numérica.</li>
             </ul>
         '''
-        self.fields['password2'].help_text = 'Ingresa la misma contraseña que antes, para verificación.' 
+        self.fields['password2'].help_text = 'Ingresa la misma contraseña que antes, para verificación.'
