@@ -17,7 +17,9 @@ import logging
 from .modelos_normalizados.category import Category
 from .modelos_normalizados.condition import Condition
 from .modelos_normalizados.foodType import FoodType
-
+from .patterns.strategies import (
+    RecentStrategy, PriceAscStrategy, PriceDescStrategy, PopularityStrategy, ProductSorter
+)
 
 # Importar pyngrok para poder iniciar ngrok desde Django
 from pyngrok import ngrok, conf
@@ -98,9 +100,23 @@ def home(request):
         except ValueError:
             pass
     
-    # Ordenar por fecha de publicación
-    products = products.order_by('-published_at')
-    
+    # Selección de estrategia vía parámetro GET 'sort'
+    # Valores admitidos: recent | price_asc | price_desc | popularity
+    sort = request.GET.get('sort', 'recent')
+
+    strategy_map = {
+        'recent': RecentStrategy(),
+        'price_asc': PriceAscStrategy(),
+        'price_desc': PriceDescStrategy(),
+        'popularity': PopularityStrategy()
+    }
+
+    strategy = strategy_map.get(sort, RecentStrategy())
+
+    # Usar el contexto ProductSorter para aplicar la estrategia
+    sorter = ProductSorter(strategy)
+    products = sorter.sort(products)
+
     # Obtener favoritos del usuario
     user_favorites = []
     if request.user.is_authenticated:
@@ -493,8 +509,22 @@ def chat_search(request):
                     if keyword.lower() in [ft[0].lower() for ft in Product.FOOD_TYPE_CHOICES]:
                         query_filters |= Q(food_type__icontains=keyword)
             
-            products = products.filter(query_filters).distinct().order_by('-published_at')
-            
+            # Aplicar filtros
+            products = products.filter(query_filters).distinct()
+
+            # Aplicar ordenamiento mediante Strategy
+            # Por defecto 'recent'
+            sort = request.POST.get('sort') or request.GET.get('sort') or 'recent'
+            strategy_map = {
+                'recent': RecentStrategy(),
+                'price_asc': PriceAscStrategy(),
+                'price_desc': PriceDescStrategy(),
+                'popularity': PopularityStrategy()
+            }
+            strategy = strategy_map.get(sort, RecentStrategy())
+            sorter = ProductSorter(strategy)
+            products = sorter.sort(products)
+
             # Serialize the products for JSON response
             products_data = []
             for product in products:
