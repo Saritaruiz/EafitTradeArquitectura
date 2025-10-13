@@ -7,12 +7,10 @@ from django.contrib import messages
 from .forms import ProductForm, CommentForm, CustomUserCreationForm
 from django.views.decorators.http import require_POST
 from django.conf import settings
-import urllib.parse
 from django.http import JsonResponse
 from seller_profiles.models import SellerProfile, ProfileClick
 from django.contrib.auth.models import User
 from .gemini_processor import GeminiProcessor
-import json
 import logging
 from .modelos_normalizados.category import Category
 from .modelos_normalizados.condition import Condition
