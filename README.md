@@ -3,6 +3,13 @@
 ## 📋 Descripción del Proyecto
 Actualmente, los estudiantes y personal de EAFIT carecen de una fuente confiable y organizada de información sobre los vendedores en el campus. Esto dificulta encontrar opciones de compra, comparar precios y acceder a productos específicos. Nuestra aplicación resuelve esto proporcionando un catálogo digital con información detallada de los vendedores, mejorando la conexión entre compradores y vendedores.
 
+## 📚 Documentación
+
+La documentación completa de los puntos del taller (incluyendo la aplicación de los patrones de diseño, justificación y resultados) se encuentra disponible en la **sección Wiki** del repositorio.
+
+🔗 Puedes acceder directamente desde:  
+👉 [Wiki del proyecto](../../wiki)
+
 ## 🛠️ Tecnologías Utilizadas
 
 - **Backend:** Django 5.1.6
