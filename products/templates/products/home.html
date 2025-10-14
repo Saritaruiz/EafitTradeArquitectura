@@ -893,7 +893,7 @@
                                 <div class="category-selector">
                                     <select name="category" class="form-select" id="categoryFilter">
                                         <option value="">Todas las categorías</option>
-                                        {% for code, name in categories %}
+                                        {% for code, name in Condition %}
                                         <option value="{{ code }}" {% if selected_category == code %}selected{% endif %}>
                                             {{ name }}
                                         </option>
