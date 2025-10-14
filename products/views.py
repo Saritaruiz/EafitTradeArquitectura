@@ -477,7 +477,6 @@ def chat_search(request):
         # Process the query using the Gemini API
         processor = GeminiProcessor()
         result = processor.process_query(query)
-        
         # Store the query in the database
         chat_query = ChatQuery(
             query=query,

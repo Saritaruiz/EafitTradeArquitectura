@@ -5,13 +5,25 @@ from dotenv import load_dotenv
 from django.conf import settings
 
 class GeminiProcessor:
-    def __init__(self):
-        # Load the environment variables
+    _instance = None  # ✅ Variable de clase para guardar la instancia única
+
+    def __new__(cls, *args, **kwargs):
+        """Garantiza que solo exista una instancia del procesador."""
+        if cls._instance is None:
+            cls._instance = super(GeminiProcessor, cls).__new__(cls)
+            cls._instance._initialize()  # inicialización única
+        return cls._instance
+
+    def _initialize(self):
+        """Carga de API Key y configuración del modelo, solo una vez."""
         load_dotenv('GEMINI_API_KEY.env')
         self.api_key = os.getenv('GEMINI_API_KEY')
         self.model_name = "gemini-1.5-flash"
         self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent"
-        
+        if not self.api_key:
+            print("⚠️ Advertencia: No se encontró la variable GEMINI_API_KEY")
+
+
     def process_query(self, query):
         """
         Process a natural language query and extract relevant search keywords
