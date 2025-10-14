@@ -28,7 +28,7 @@ mkdir EafitTrade1
 cd EafitTrade1
 
 # Clonar el repositorio
-git clone https://github.com/camiloarbr/EafitTrade.git
+git clone https://github.com/Saritaruiz/EafitTradeArquitectura.git
 
 # Entrar al directorio del proyecto clonado
 cd EafitTrade
