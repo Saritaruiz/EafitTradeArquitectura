@@ -3,3 +3,4 @@
 staticfield+
 .env
 GEMINI_API_KEY.env
+db.sqlite3
