@@ -1045,6 +1045,22 @@
     <div class="results-section mb-4 section-spacing">
         <div class="d-flex justify-content-between align-items-center">
             <h2 class="h4 mb-0">
+                <!-- Selector de ordenamiento (Strategy Pattern UI) -->
+                <form method="get" class="d-flex align-items-center" id="sortForm">
+                    {% for key, value in request.GET.items %}
+                        {% if key != 'sort' %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <label for="sort" class="me-2 text-muted">Ordenar por:</label>
+                    <select name="sort" id="sort" class="form-select form-select-sm" style="width: 180px;" onchange="this.form.submit()">
+                        <option value="recent" {% if request.GET.sort == 'recent' or not request.GET.sort %}selected{% endif %}>Más recientes</option>
+                        <option value="price_asc" {% if request.GET.sort == 'price_asc' %}selected{% endif %}>Precio: menor a mayor</option>
+                        <option value="price_desc" {% if request.GET.sort == 'price_desc' %}selected{% endif %}>Precio: mayor a menor</option>
+                        <option value="popularity" {% if request.GET.sort == 'popularity' %}selected{% endif %}>Más populares</option>
+                    </select>
+                </form>
+
                 {% if search_query or selected_category %}
                     Resultados de búsqueda
                 {% else %}
